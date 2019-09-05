@@ -8,4 +8,4 @@ The Questrade platform requires that client applications like the QuestradeRecon
 
 [PDF Documentation](Documentation/QuestradeMacroDocumentation.pdf?raw=True)
 
-For Review Only. Don't install.
+Currently For Review Only. Don't install.
