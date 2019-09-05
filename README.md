@@ -6,4 +6,4 @@ This script is meant to be run infrequently to help provide a dashboard view whe
 
 The Questrade platform requires that client applications like the QuestradeReconcile script help protect the integrity of the service from abuse. The service provides a clear expectation of the level of service that the API commits to fulfill. See details here: https://www.questrade.com/api/documentation/ratelimiting.
 
-[Documentation](Documentation/QuestradeMacroDocumentation.pdf?raw=True)
+[PDF Documentation](Documentation/QuestradeMacroDocumentation.pdf?raw=True)
