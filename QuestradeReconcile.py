@@ -582,4 +582,4 @@ def QuestradeReconcile( *args ):
 
 	return None
 
-g_exportedScripts = QuestradeReconcile, ConditionalFormat,
+g_exportedScripts = QuestradeReconcile,
