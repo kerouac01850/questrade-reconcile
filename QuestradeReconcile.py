@@ -1,47 +1,41 @@
-'''	This script uses the Questrade API to fetch account, position, balance, equity, and 30 day activity data into the current spreadsheet file.
+'''	The QuestradeReconcile macro is python code that uses the Questrade application programming interface (API) to fetch
+	account, position, balance, equity, 30 day activity, and dividend data into a LibreOffice spreadsheet file.
 
-	You must add six sheets to the spreadsheet file with the following names: Summary, Accounts, Positions, Balances, Equities, and Activity.
+	The spreadsheet file must have seven sheets with the following names: Accounts, Positions, Balances, Equities, Activity,
+	Dividends and Configuration. Except for the Configuration sheet any existing data on these sheets will be cleared when
+	the QuestradeReconcile python macro is run.
 
-	Except for the Summary sheet any existing data will be deleted when the QuestradeReconcile( ) python macro is called.
-	Data from Questrade API will be used to populate these sheets.
+	 Data from the Questrade on-line platform will be used to update these sheets. The sheets can be moved within the file:
+	 sheet order does not affect anything. Any other sheets in the file are ignored.
 	
-	The Summary sheet must have the following:
-		Cell  B2: Questrade API token_value text string.
-		Cell P40: A text cell for logging macro status. Usually helps to merge surrounding cells to form a text block using P43 as the root cell.
-		Cell P47: Comma separated list of equities to add to the Equities sheet in addition to those already referenced by the Positions sheet.
+	The Configuration sheet must have the following cells defined for the QuestradeReconcile macro to function correctly.
+		Cell $Configuration.B1: Questrade authentication token_value text string.
+		Cell $Configuration.B3: A text cell with a comma separated list of equity symbols.
+		Cell $Configuration.B5: A date cell indicating the last time the macro was run.
+		Cell $Configuration.B7: A text cell for logging macro status.
 
-	To change these locations the python code must be edited. See config_token, config_log, and config_equities at the top of the file.
+	To change these locations the python code must be edited. See config_token, config_equities, config_timestamp, and
+	config_log, at the top of the file.
 	
 	This script must be copied into the following directory:
 		C:\Program Files\LibreOffice\share\Scripts\python\QuestradeData.py
 
-	Installation and configuration examples:
+	TUTORIAL:
 		Interface-oriented programming in OpenOffice / LibreOffice : automate your office tasks with Python Macros.
 		http://christopher5106.github.io/office/2015/12/06/openoffice-libreoffice-automate-your-office-tasks-with-python-macros.html
-
+	
 	TODO:
 
 	Changes
 		August 2019	: Format and sort values in Accounts, Positions, Balances, Equities, and Activities.
 		July 2019	: Added Activity sheet ... goes back 30 days from today.
 		June 2019	: Add numbers as numeric values and dates as date values instead of as text values.
-		
-	QuestradeReconcile is free software: you can redistribute and/or modify it under the terms of the GNU General Public License
-	as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-	
-	QuestradeReconcile is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-	warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-	You should have received a copy of the GNU General Public License along with this program.
-	
-	If not, see https://www.gnu.org/licenses/.
-
-	QuestradeReconcile © 2019 kerouac01850
 '''
 
-config_token = 'Configuration:B1'
-config_equities = 'Configuration:B3'
-config_timestamp = 'Configuration.B5'
-config_log = 'Configuration:B7'
+config_token = '$Configuration.B1'
+config_equities = '$Configuration.B3'
+config_timestamp = '$Configuration.B5' 
+config_log = '$Configuration.B7'
 
 def desktop_model( ):
 	desktop = XSCRIPTCONTEXT.getDesktop( )
@@ -52,17 +46,17 @@ def sheet_by_name( name ):
 	return model.Sheets.getByName( name )
 
 def cell_by_reference( reference ):
-	values = reference.split( ':' )
-	sheet = sheet_by_name( values[0] )
-	return sheet.getCellRangeByName( values[1] )
+	values = reference.split( '.' )
+	sheet = sheet_by_name( values[0].strip( '$' ) )
+	return sheet.getCellRangeByName( values[1].strip( '$' ) )
 
 def additional_equities( ):
 	cell = cell_by_reference( config_equities )
-	return cell.getString(  )
+	return cell.getString( )
 
 def token_value( ):
 	cell = cell_by_reference( config_token )
-	return cell.getString(  )
+	return cell.getString( )
 
 def log_cell( ):
 	return cell_by_reference( config_log )
@@ -201,6 +195,14 @@ def set_and_format_float( cell, value, format ):
 	else:
 		cell.setValue( float( value ) )
 		format_cell( cell, format )
+
+def timestamp( ):
+	from datetime import datetime
+
+	now = datetime.now( )
+	cell = cell_by_reference( config_timestamp )
+	value = now.strftime( '%A, %d %b %Y %I:%M:%S %p' )
+	set_and_format_string( cell, value, 'General' )
 
 def message_box( message ):
 	from com.sun.star.awt.MessageBoxType import MESSAGEBOX, INFOBOX, WARNINGBOX, ERRORBOX, QUERYBOX
@@ -530,6 +532,7 @@ class Dividends( Spreadsheet ):
 		self.sort_by_indicies( ( 6, 7, ), ascending = False )
 
 def QuestradeReconcile( *args ):
+	timestamp( )
 	log_clear( )
 
 	try:
@@ -575,31 +578,6 @@ def QuestradeReconcile( *args ):
 		desktop_model( ).unlockControllers( )
 
 	log_write( 'Reconciling from Questrade completed!' )
-	message_box( log_read( ) )
-
-	return None
-
-"""
-	ConditionalFormat: UNO API doesn't appear to bridge XConditionEntry correctly. Direct formatting has been applied via is_current_month( value ) instead.
-		https://forum.openoffice.org/en/forum/viewtopic.php?f=44&t=99220
-		https://ask.libreoffice.org/en/question/207319/how-to-access-conditionalformat-stylename-and-datetype-property/	
-"""
-
-def ConditionalFormat( *args ):
-	log_clear( )
-																		# com.sun.star.lang.XComponent::Sheets.getByName( 'Dividends' )
-	sheet = sheet_by_name( 'Dividends' )								# com.sun.star.sheet.XSpreadsheets
-	formats = sheet.getPropertyValue( 'ConditionalFormats' )			# com.sun.star.sheet.XConditionalFormats
-	for format in formats.getConditionalFormats( ):						# com.sun.star.sheet.XConditionalFormat
-		cellrange = format.Range										# com.sun.star.sheet.XSheetCellRanges
-		identifier = format.ID											# long = 1
-		propertySet = format.getByIndex( 0 )							# com.sun.star.beans.XPropertySet	
-		conditionType = propertySet.getType( )							# com.sun.star.sheet.XConditionEntry ConditionEntryType = 4 (DATE)
-		styleName = propertySet.StyleName								# com.sun.star.beans.XPropertySet = (String) Good
-		dateType = propertySet.DateType									# com.sun.star.beans.XPropertySet = (String) Good???
-																		# 	expected com::sun::star::sheet::DateType = (long) 7 THISMONTH
-		log_write( '::ConditionalFormat: range={} id={} type={} style={} date={}'.format( cellrange.AbsoluteName, identifier, conditionType, styleName, dateType ) )
-
 	message_box( log_read( ) )
 
 	return None
