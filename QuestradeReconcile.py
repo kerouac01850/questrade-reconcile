@@ -27,9 +27,10 @@
 		June 2019	: Add numbers as numeric values and dates as date values instead of as text values.
 '''
 
-config_token = 'Summary:B2'
-config_log = 'Summary:P40'
-config_equities = 'Summary:P47'
+config_token = 'Configuration:B1'
+config_equities = 'Configuration:B3'
+config_timestamp = 'Configuration.B5'
+config_log = 'Configuration:B7'
 
 def desktop_model( ):
 	desktop = XSCRIPTCONTEXT.getDesktop( )
