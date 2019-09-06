@@ -400,6 +400,9 @@ class Equities( Spreadsheet ):
 
 	def fetch( self, symbol_names ):
 		try:
+			if len( symbol_names ) == 0:
+				log_write( 'Equities::fetch( len( symbol_names ) is 0 )' )
+				return
 			quest_equities = self.q.symbols( names = symbol_names )
 		except:
 			log_write( 'Equities::fetch( {} ) failed'.format( symbol_names ) )
@@ -528,7 +531,7 @@ class Dividends( Spreadsheet ):
 			yield dividend
 
 	def default_sort( self ):
-		# dividend (Column F = 4), payout (Column G = 5)
+		# dividend (Column G = 6), payout (Column H = 7)
 		self.sort_by_indicies( ( 6, 7, ), ascending = False )
 
 def QuestradeReconcile( *args ):
