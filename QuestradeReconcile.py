@@ -30,7 +30,7 @@
 		August 2019	: Format and sort values in Accounts, Positions, Balances, Equities, and Activities.
 		July 2019	: Added Activity sheet ... goes back 30 days from today.
 		June 2019	: Add numbers as numeric values and dates as date values instead of as text values.
-		
+
 	QuestradeReconcile is free software: you can redistribute and/or modify it under the terms of the GNU General Public
 	License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
 	version.
@@ -166,28 +166,37 @@ def set_and_format_string( cell, value, format ):
 		cell.setString( value )
 		format_cell( cell, format )
 
-def serial_date( value ):
+def string_to_date( value ):
 	''' Sample date: '2019-07-02T00:00:00.000000-04:00'
 	'''
-	from datetime import datetime
+	from datetime import date
 
-	year = int( value[0:4] )
-	month = int( value[5:7] )
-	day = int( value[8:10] )
+	return date( int( value[0:4] ), int( value[5:7] ), int( value[8:10] ) )
 
-	d = datetime( year, month, day )
-	t = datetime( 1899, 12, 30 )
+def serial_date( value ):
+	from datetime import date
+
+	d = string_to_date( value )
+	t = date( 1899, 12, 30 )
 	delta = d - t
 
 	return float( delta.days ) + float( delta.seconds ) / 86400
 
-def is_current_month( value ):
-	from datetime import datetime
+def within_monthly_span( value, span = 1 ):
+	from datetime import date
+	from calendar import monthrange
 
-	year = int( value[0:4] )
-	month = int( value[5:7] )
-	today = datetime.today( )
-	return month == today.month and year == today.year
+	d = string_to_date( value )
+	t = date.today( )
+
+	year = t.year + int( ( t.month + span - 1 ) / 12 )
+	month = ( t.month + span - 1 ) % 12
+	current, last = monthrange( year, month )
+
+	t1 = date( t.year, t.month, 1 )
+	t2 = date( year, month, last )
+
+	return d >= t1 and d <= t2
 
 def set_and_format_date( cell, value, format ):
 	if value is None:
@@ -195,7 +204,7 @@ def set_and_format_date( cell, value, format ):
 	elif isinstance( value, str ):
 		cell.setValue( serial_date( value ) )
 		format_cell( cell, format )
-		if is_current_month( value ):
+		if within_monthly_span( value ):
 			cell.CellBackColor = 0xccffcc	# light green
 	else:
 		set_and_format_string( cell, value, '@' )
@@ -267,7 +276,7 @@ class Spreadsheet( ):
 				try:
 					self.setvalue[field_type]( value_cell, data[ field_name ] )
 				except:
-					log_write( '{}: n={} t={} r={} c={} v={}'.format( self.name, field_name, field_type, self.rows, column, data[ field_name] ) )
+					log_write( '{}::add_row( n={} t={} r={} c={} v={} )'.format( self.name, field_name, field_type, self.rows, column, data[ field_name] ) )
 					log_traceback( )
 			column = column + 1
 		self.rows = self.rows + 1
@@ -507,7 +516,9 @@ class Dividends( Spreadsheet ):
 			( 'dividend', 'd' ),
 			( 'payout', 'd' ),
 			( 'amount', 'n6' ),
-			( 'note', 's' )
+			( 'note', 's' ),
+			( 'quantity', 'n3' ),
+			( 'income', 'n2' )
 		]
 		super( ).__init__( dividends_name, dividends_fields )
 
@@ -539,6 +550,8 @@ class Dividends( Spreadsheet ):
 			dividend['symbolId'] = quest_equity['symbolId']
 			dividend['currency'] = quest_equity['currency']
 			dividend['frequency'] = frequency
+			dividend['quantity'] = None
+			dividend['income'] = None
 			yield dividend
 
 	def default_sort( self ):
@@ -572,6 +585,9 @@ def QuestradeReconcile( *args ):
 					quest_position['currency'] = quest_equity['currency']
 					equities.add_row( quest_equity )
 					for dividend in dividends.fetch( quest_equity ):
+						if within_monthly_span( dividend['payout'], 3 ):
+							dividend['quantity'] = quest_position['openQuantity']
+							dividend['income'] = float( dividend['amount'] ) * float( quest_position['openQuantity'] )
 						dividends.add_row( dividend )
 				positions.add_row( quest_position )
 
