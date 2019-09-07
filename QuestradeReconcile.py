@@ -39,7 +39,7 @@
 	warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 	You should have received a copy of the GNU General Public License along with this program. If not, see
 	https://www.gnu.org/licenses/.
-	
+
 	Copyright (C) 2019 kerouac01850
 '''
 
@@ -161,7 +161,7 @@ def format_cell( cell, format ):
 
 def set_and_format_string( cell, value, format ):
 	if value is None:
-		set_and_format_string( cell, '', '@' )
+		set_and_format_string( cell, '', 'General' )
 	else:
 		cell.setString( value )
 		format_cell( cell, format )
@@ -200,18 +200,18 @@ def within_monthly_span( value, span = 1 ):
 
 def set_and_format_date( cell, value, format ):
 	if value is None:
-		set_and_format_string( cell, '', '@' )
+		set_and_format_string( cell, '', 'General' )
 	elif isinstance( value, str ):
 		cell.setValue( serial_date( value ) )
 		format_cell( cell, format )
 		if within_monthly_span( value ):
 			cell.CellBackColor = 0xccffcc	# light green
 	else:
-		set_and_format_string( cell, value, '@' )
+		set_and_format_string( cell, value, 'General' )
 
 def set_and_format_float( cell, value, format ):
 	if value is None:
-		set_and_format_string( cell, '', '@' )
+		set_and_format_string( cell, '', 'General' )
 	else:
 		cell.setValue( float( value ) )
 		format_cell( cell, format )
@@ -494,15 +494,33 @@ class Activities( Spreadsheet ):
 class Dividends( Spreadsheet ):
 	from re import compile, VERBOSE, MULTILINE
 
-	frequency_pattern = compile( r"<p>Frequency:\s*(?P<frequency>[^<]*)</p>", VERBOSE | MULTILINE )
-	dividend_patttern = compile(
-		r"""<tr>\s*
+	tsx_frequency_pattern = compile( r"<p>Frequency:\s*(?P<frequency>[^<]*)</p>", VERBOSE | MULTILINE )
+	tsx_dividend_patttern = compile(
+		r'''<tr>\s*
 			<td>\s*(?:<i>)?\s*(?P<dividend>\d{4}-\d{2}-\d{2})\s*(?:</i>)?\s*</td>\s*
 			<td>\s*(?:<i>)?\s*(?P<payout>\d{4}-\d{2}-\d{2})\s*(?:</i>)?\s*</td>\s*
 			<td>\s*(?:<i>)?\s*\$(?P<amount>\d+\.\d+)?(?P<note>\*\*)?\s*(?:</i>)?\s*</td>\s*
 			<td>.*?</td>\s*
-		</tr>""",
-		VERBOSE | MULTILINE)
+		</tr>''',
+		VERBOSE | MULTILINE )
+	nasdaq_dividend_pattern = compile(
+		r'''<tr>\s*
+			<td>\s*<span[^>]*>(?P<dividend>\d+/\d+/\d+)\s*</span>\s*</td>\s*
+			<td>(?P<note>\w+)</td>\s*
+			<td>\s*<span[^>]*>(?P<amount>\d+\.\d+)</span>\s*</td>\s*
+			<td>\s*<span[^>]*>(?P<declaration>\d+/\d+/\d+)\s*</span>\s*</td>\s*
+			<td>\s*<span[^>]*>(?P<record>\d+/\d+/\d+)\s*</span>\s*</td>\s*
+			<td>\s*<span[^>]*>(?P<payout>\d+/\d+/\d+)\s*</span>\s*</td>\s*
+		</tr>''',
+		VERBOSE | MULTILINE )
+	handler = {
+		'TSX':    lambda o, e: o.fetch_tsx( e ),
+		'NASDAQ': lambda o, e: o.fetch_nasdaq( e ),
+		'BATS':   lambda o, e: o.fetch_nasdaq( e ),
+		'ARCA':   lambda o, e: o.fetch_nasdaq( e ),
+		'':       lambda o, e: o.fetch_null( e ),
+		None:     lambda o, e: o.fetch_null( e )
+	}
 
 	def __init__( self ):
 		dividends_name = "Dividends"
@@ -522,37 +540,80 @@ class Dividends( Spreadsheet ):
 		]
 		super( ).__init__( dividends_name, dividends_fields )
 
-	def fetch( self, quest_equity ):
+	def cartesian_product( self, dividend, quest_equity ):
+		dividend['account'] = quest_equity['account']
+		dividend['accountType'] = quest_equity['accountType']
+		dividend['symbol'] = quest_equity['symbol']
+		dividend['symbolId'] = quest_equity['symbolId']
+		dividend['currency'] = quest_equity['currency']
+		dividend['quantity'] = None
+		dividend['income'] = None
+		return dividend
+
+	def reformat_date( self, s ):
+		''' Sample 12/24/2018 -> 2019-12-24
+		'''
+		from datetime import date
+		u = s.split( '/' )
+		d = date( int( u[2] ), int( u[0] ), int( u[1] ) )
+		return d.strftime( '%Y-%m-%d' )
+
+	def reformat_dates( self, dividend ):
+		dividend['payout'] = self.reformat_date( dividend['payout'] )
+		dividend['dividend'] = self.reformat_date( dividend['dividend'] )
+		dividend['record'] = self.reformat_date( dividend['record'] )
+		dividend['declaration'] = self.reformat_date( dividend['declaration'] )
+		return dividend
+
+	def url_open( self, url ):
 		from urllib.request import urlopen
-
-		if quest_equity['listingExchange'] != 'TSX':
-			return
-
 		try:
-			symbol = quest_equity['symbol'].replace( '.TO', '' )
-			url = 'https://dividendhistory.org/payout/tsx/{}/'.format( symbol )
 			response = urlopen( url )
 			html = response.read( )
-			data = html.decode( 'utf-8' )
+			return html.decode( 'utf-8' )
+		except:
+			log_write( 'Dividends::url_open( {} ) failed'.format( url ) )
+			log_traceback( )
+			return
+
+	def fetch( self, quest_equity ):
+		try:
+			listing_exchange = quest_equity['listingExchange']
+			generator = Dividends.handler[listing_exchange]( self, quest_equity )
 		except:
 			log_write( 'Dividends::fetch( {} ) failed'.format( quest_equity ) )
 			log_traceback( )
 			return
+		return generator
 
-		frequency_match = Dividends.frequency_pattern.search( data )
+	def fetch_tsx( self, quest_equity ):
+		symbol = quest_equity['symbol'].replace( '.TO', '' )
+		url = 'https://dividendhistory.org/payout/tsx/{}/'.format( symbol )
+		data = self.url_open( url )
+
+		frequency_match = Dividends.tsx_frequency_pattern.search( data )
 		frequency = frequency_match.group( 'frequency' ) if frequency_match is not None else None
 
-		for match in Dividends.dividend_patttern.finditer( data ):
+		for match in Dividends.tsx_dividend_patttern.finditer( data ):
 			dividend = match.groupdict( )
-			dividend['account'] = quest_equity['account']
-			dividend['accountType'] = quest_equity['accountType']
-			dividend['symbol'] = quest_equity['symbol']
-			dividend['symbolId'] = quest_equity['symbolId']
-			dividend['currency'] = quest_equity['currency']
+			self.cartesian_product( dividend, quest_equity )
 			dividend['frequency'] = frequency
-			dividend['quantity'] = None
-			dividend['income'] = None
 			yield dividend
+
+	def fetch_nasdaq( self, quest_equity ):
+		symbol = quest_equity['symbol']
+		url = 'https://www.nasdaq.com/symbol/{}/dividend-history'.format( symbol )
+		data = self.url_open( url )
+
+		for match in Dividends.nasdaq_dividend_pattern.finditer( data ):
+			dividend = match.groupdict( )
+			self.cartesian_product( dividend, quest_equity )
+			self.reformat_dates( dividend )
+			dividend['frequency'] = None
+			yield dividend
+
+	def fetch_null( self, quest_equity ):
+		return { }
 
 	def default_sort( self ):
 		# dividend (Column G = 6), payout (Column H = 7)
