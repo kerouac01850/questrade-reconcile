@@ -429,6 +429,8 @@ class Equities( Spreadsheet ):
 			log_traceback( )
 			return
 		for quest_equity in quest_equities['symbols']:
+			quest_equity['account'] = None
+			quest_equity['accountType'] = None
 			yield quest_equity
 
 	def fetch_unique( self, account_number, account_type, symbol_id ):
@@ -518,6 +520,7 @@ class Dividends( Spreadsheet ):
 		'NASDAQ': lambda o, e: o.fetch_nasdaq( e ),
 		'BATS':   lambda o, e: o.fetch_nasdaq( e ),
 		'ARCA':   lambda o, e: o.fetch_nasdaq( e ),
+		'NYSE':   lambda o, e: o.fetch_nasdaq( e ),
 		'':       lambda o, e: o.fetch_null( e ),
 		None:     lambda o, e: o.fetch_null( e )
 	}
