@@ -654,6 +654,8 @@ def QuestradeReconcile( *args ):
 
 		for quest_equity in equities.fetch( additional_equities( ) ):
 			equities.add_row( quest_equity )
+			for dividend in dividends.fetch( quest_equity ):
+				dividends.add_row( dividend )
 
 		activities.default_sort( )
 		balances.default_sort( )
