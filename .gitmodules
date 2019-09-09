@@ -1,0 +1,3 @@
+[submodule "questrade-api"]
+	path = questrade-api
+	url = https://github.com/kerouac01850/questrade-api

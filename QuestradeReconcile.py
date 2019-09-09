@@ -9,10 +9,13 @@
 	 sheet order does not affect anything. Any other sheets in the file are ignored.
 	
 	The Configuration sheet must have the following cells defined for the QuestradeReconcile macro to function correctly.
-		Cell $Configuration.B1: Questrade authentication token_value text string.
-		Cell $Configuration.B3: A text cell with a comma separated list of equity symbols.
-		Cell $Configuration.B5: A date cell indicating the last time the macro was run.
-		Cell $Configuration.B7: A text cell for logging macro status.
+		 $Configuration.B1: Questrade authentication token_value text string.
+		 $Configuration.B3: A text cell with a comma separated list of equity symbols.
+		 $Configuration.B5: A date cell indicating the last time the macro was run.
+		 $Configuration.B7: A text cell for logging macro status.
+		 $Configuration.B9: Questrade API token cache
+		$Configuration.B11: RateLimit Remaining is number of API requests allowed against the current limit.
+		$Configuration.B13: RateLimit Reset is time when the current limit will expire ( Unix timestamp ).
 
 	To change these locations the python code must be edited. See config_token, config_equities, config_timestamp, and
 	config_log, at the top of the file.
@@ -24,12 +27,12 @@
 		Interface-oriented programming in OpenOffice / LibreOffice : automate your office tasks with Python Macros.
 		http://christopher5106.github.io/office/2015/12/06/openoffice-libreoffice-automate-your-office-tasks-with-python-macros.html
 	
-	TODO:
+	  
 
-	Changes
-		August 2019	: Format and sort values in Accounts, Positions, Balances, Equities, and Activities.
-		July 2019	: Added Activity sheet ... goes back 30 days from today.
-		June 2019	: Add numbers as numeric values and dates as date values instead of as text values.
+		
+																								  
+																	
+																							   
 
 	QuestradeReconcile is free software: you can redistribute and/or modify it under the terms of the GNU General Public
 	License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
@@ -47,6 +50,9 @@ config_token = '$Configuration.B1'
 config_equities = '$Configuration.B3'
 config_timestamp = '$Configuration.B5' 
 config_log = '$Configuration.B7'
+config_apicache = '$Configuration.B9'
+config_remaining = '$Configuration.B11'
+config_reset = '$Configuration.B13'
 
 def desktop_model( ):
 	desktop = XSCRIPTCONTEXT.getDesktop( )
@@ -99,6 +105,21 @@ def log_traceback( ):
 	for line in lines:
 		log_write( line )
 
+def api_read_cache( ):
+	from json import loads
+	cell = cell_by_reference( config_apicache )
+	try:
+		str = cell.getString( )
+		return loads( str )
+	except:
+		raise RuntimeError( 'No valid token provided and none found at {}'.format( config_apicache ) )
+
+def api_write_cache( token ):
+	from json import dumps
+	cell = cell_by_reference( config_apicache )
+	json = dumps( token, indent = 4, sort_keys = True )
+	cell.setString( json )
+
 def api_cache_connect( ):
 	from questrade_api import Questrade
 
@@ -108,6 +129,7 @@ def api_cache_connect( ):
 	except:
 		q = None
 		log_write( 'Failed to authenticate using cached token file.' )
+		log_traceback( )
 	return q
 
 def api_token_connect( ):
@@ -124,6 +146,7 @@ def api_token_connect( ):
 	except:
 		q = None
 		log_write( 'Failed to authenticate using refresh_token in cell {}'.format( config_token ) )
+		log_traceback( )
 	return q
 
 def api_connect( ):
@@ -288,6 +311,16 @@ class Spreadsheet( ):
 		property_fields = property_value( 'SortFields', Any( '[]com.sun.star.util.SortField', sort_fields ) )
 		property_header = property_value( 'HasHeader', True )
 		self.range.sort( [ property_fields, property_header ] )
+
+	@classmethod
+	def finalize_ratelimits( cls ):
+		remaining, reset = cls.q.ratelimit
+		if remaining:
+			cell_remaining = cell_by_reference( config_remaining )
+			cell_remaining.setValue( float( remaining ) )
+		if reset:
+			cell_reset = cell_by_reference( config_reset )
+			cell_reset.setValue( float( reset ) )
 
 class Accounts( Spreadsheet ):
 	def __init__( self ):
@@ -665,6 +698,8 @@ def QuestradeReconcile( *args ):
 		positions.default_sort( )
 		equities.default_sort( )
 		dividends.default_sort( )
+
+		Spreadsheet.finalize_ratelimits( )
 
 	except:
 		log_traceback( )
