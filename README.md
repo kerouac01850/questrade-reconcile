@@ -4,6 +4,8 @@ This script is meant to be run infrequently to help provide a dashboard view whe
 
 ![Figure 1: Run the QuestradeReconcile Python Macro](Documentation/RunQuestradeMacro.png?raw=True "Figure 1: Run the QuestradeReconcile Python Macro")
 
+This project was last tested on September 10th, 2019 and is fully functional.
+
 [PDF Documentation](Documentation/QuestradeMacroDocumentation.pdf?raw=True)
 
 [Wiki Roadmap](https://github.com/kerouac01850/questrade-reconcile/wiki)
