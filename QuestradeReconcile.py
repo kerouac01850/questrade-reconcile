@@ -5,20 +5,19 @@
 	Dividends and Configuration. Except for the Configuration sheet any existing data on these sheets will be cleared when
 	the QuestradeReconcile python macro is run.
 
-	 Data from the Questrade on-line platform will be used to update these sheets. The sheets can be moved within the file:
-	 sheet order does not affect anything. Any other sheets in the file are ignored.
+	Data from the Questrade on-line platform will be used to update these sheets. The sheets can be moved within the file:
+	sheet order does not affect anything. Any other sheets in the file are ignored.
 	
 	The Configuration sheet must have the following cells defined for the QuestradeReconcile macro to function correctly.
-		 $Configuration.B1: Questrade authentication token_value text string.
-		 $Configuration.B3: A text cell with a comma separated list of equity symbols.
-		 $Configuration.B5: A date cell indicating the last time the macro was run.
-		 $Configuration.B7: A text cell for logging macro status.
-		 $Configuration.B9: Questrade API token cache
-		$Configuration.B11: RateLimit Remaining is number of API requests allowed against the current limit.
-		$Configuration.B13: RateLimit Reset is time when the current limit will expire ( Unix timestamp ).
+		$Configuration.B1  : Questrade authentication token_value text string.
+		$Configuration.B3  : A date cell indicating the last time the macro was run.
+		$Configuration.B5  : RateLimit Remaining is number of API requests allowed against the current limit.
+		$Configuration.B7  : RateLimit Reset is time when the current limit will expire ( Unix timestamp ).
+		$Configuration.B10 : A text cell with a comma separated list of equity symbols.
+		$Configuration.B12 : A text cell for logging macro status.
+		$Configuration.B14 : Questrade API token cache
 
-	To change these locations the python code must be edited. See config_token, config_equities, config_timestamp, and
-	config_log, at the top of the file.
+	To change these locations the python code must be edited. See config_token, config_timestamp, config_remaining, config_reset, config_equities, config_log, and config_apicache at the top of the file.
 	
 	This script must be copied into the following directory:
 		C:\Program Files\LibreOffice\share\Scripts\python\QuestradeData.py
@@ -40,12 +39,12 @@
 '''
 
 config_token = '$Configuration.B1'
-config_equities = '$Configuration.B3'
-config_timestamp = '$Configuration.B5' 
-config_log = '$Configuration.B7'
-config_apicache = '$Configuration.B9'
-config_remaining = '$Configuration.B11'
-config_reset = '$Configuration.B13'
+config_timestamp = '$Configuration.B3' 
+config_remaining = '$Configuration.B5'
+config_reset = '$Configuration.B7'
+config_equities = '$Configuration.B10'
+config_log = '$Configuration.B12'
+config_apicache = '$Configuration.B14'
 
 def desktop_model( ):
 	desktop = XSCRIPTCONTEXT.getDesktop( )
@@ -60,96 +59,8 @@ def cell_by_reference( reference ):
 	sheet = sheet_by_name( values[0].strip( '$' ) )
 	return sheet.getCellRangeByName( values[1].strip( '$' ) )
 
-def additional_equities( ):
-	cell = cell_by_reference( config_equities )
-	return cell.getString( )
-
-def token_value( ):
-	cell = cell_by_reference( config_token )
-	return cell.getString( )
-
-def log_cell( ):
-	return cell_by_reference( config_log )
-
-def log_clear( ):
-	from datetime import datetime
-
-	cell = log_cell( )
-	today = datetime.today( )
-	cell.setString( today.strftime( '%Y.%m.%d-%H:%M:%S : Reconciling from Questrade started!' ) )
-
-def log_read( ):
-	cell = log_cell( )
-	return cell.getString( )
-
-def log_write( message ):
-	from datetime import datetime
-
-	cell = log_cell( )
-	today = datetime.today( )
-	cell.setString( cell.getString( ) + '\n' + today.strftime( '%Y.%m.%d-%H:%M:%S : ' ) + message )
-
-def log_traceback( ):
-	from sys import exc_info
-	from traceback import format_exception
-
-	exc_type, exc_value, exc_traceback = exc_info( )
-	lines = format_exception( exc_type, exc_value, exc_traceback )
-	for line in lines:
-		log_write( line )
-
-def read_token_cache( ):
-	cell = cell_by_reference( config_apicache )
-	s = cell.getString( )
-	log_write( 'api_read_cache( ) = {}'.format( s ) )
-	return s
-
-def write_token_cache( s ):
-	cell = cell_by_reference( config_apicache )
-	cell.setString( s )
-	log_write( 'api_write_cache( s ) = {}'.format( s ) )
-
-def questrade_cache_connect( ):
-	from questrade_api import Questrade
-
-	try:
-		q = Questrade( storage_adaptor = ( read_token_cache, write_token_cache ), logger = log_write )
-		cell = cell_by_reference( config_timestamp )
-		set_and_format_string( cell, q.time['time'], 'General' )
-	except:
-		q = None
-		log_write( 'Failed to authenticate using cached token file.' )
-		log_traceback( )
-	return q
-
-def questrade_token_connect( ):
-	from questrade_api import Questrade
-	from os.path import expanduser, isfile
-	from os import remove
-
-	TOKEN_PATH = expanduser( '~/.questrade.json' )
-	try:
-		if isfile( TOKEN_PATH ):
-			remove( TOKEN_PATH )
-		q = Questrade( refresh_token = token_value( ), storage_adaptor = ( read_token_cache, write_token_cache ), logger = log_write )
-		log_write( 'api_cache_connect::time() = {}'.format(  q.time ) )
-	except:
-		q = None
-		log_write( 'Failed to authenticate using refresh_token in cell {}'.format( config_token ) )
-		log_traceback( )
-	return q
-
-def questrade_connect( ):
-	q = questrade_cache_connect( )
-#	if q is None:
-#		q = questrade_token_connect( )
-	if q is None:
-		raise RuntimeError( 'Failed to authenticate Questrade API.' )
-	return q
-
 def sortfield_by_index( index, ascending = True ):
 	from com.sun.star.util import SortField
-
 	sf = SortField( )
 	sf.Field = index
 	sf.SortAscending = ascending
@@ -157,7 +68,6 @@ def sortfield_by_index( index, ascending = True ):
 
 def property_value( name, value ):
 	from com.sun.star.beans import PropertyValue
-
 	pv = PropertyValue( )
 	pv.Name = name
 	pv.Value = value
@@ -165,7 +75,6 @@ def property_value( name, value ):
 
 def format_cell( cell, format ):
 	from com.sun.star.uno import RuntimeException
-
 	document = XSCRIPTCONTEXT.getDocument( )
 	try:
 		cell.NumberFormat = document.NumberFormats.addNew( format, document.CharLocale )
@@ -174,7 +83,8 @@ def format_cell( cell, format ):
 
 def set_and_format_string( cell, value, format ):
 	if value is None:
-		set_and_format_string( cell, '', 'General' )
+		cell.setString( '' )
+		format_cell( cell, format )
 	else:
 		cell.setString( value )
 		format_cell( cell, format )
@@ -183,37 +93,30 @@ def string_to_date( value ):
 	''' Sample date: '2019-07-02T00:00:00.000000-04:00'
 	'''
 	from datetime import date
-
 	return date( int( value[0:4] ), int( value[5:7] ), int( value[8:10] ) )
 
 def serial_date( value ):
 	from datetime import date
-
 	d = string_to_date( value )
 	t = date( 1899, 12, 30 )
 	delta = d - t
-
 	return float( delta.days ) + float( delta.seconds ) / 86400
 
 def within_monthly_span( value, span = 1 ):
 	from datetime import date
 	from calendar import monthrange
-
 	d = string_to_date( value )
 	t = date.today( )
-
 	year = t.year + int( ( t.month + span - 1 ) / 12 )
 	month = ( t.month + span - 1 ) % 12
 	current, last = monthrange( year, month )
-
 	t1 = date( t.year, t.month, 1 )
 	t2 = date( year, month, last )
-
 	return d >= t1 and d <= t2
 
 def set_and_format_date( cell, value, format ):
 	if value is None:
-		set_and_format_string( cell, '', 'General' )
+		set_and_format_string( cell, value, format )
 	elif isinstance( value, str ):
 		cell.setValue( serial_date( value ) )
 		format_cell( cell, format )
@@ -224,25 +127,101 @@ def set_and_format_date( cell, value, format ):
 
 def set_and_format_float( cell, value, format ):
 	if value is None:
-		set_and_format_string( cell, '', 'General' )
+		set_and_format_string( cell, value, format )
 	else:
 		cell.setValue( float( value ) )
 		format_cell( cell, format )
 
+def get_string( reference ):
+	cell = cell_by_reference( reference )
+	return cell.getString( )
+
+def set_string( reference, value ):
+	cell = cell_by_reference( reference )
+	set_and_format_string( cell, value, 'General' )
+
+def get_number( reference ):
+	cell = cell_by_reference( reference )
+	return cell.getString( )
+
+def set_number( reference, value ):
+	cell = cell_by_reference( reference )
+	set_and_format_float( cell, value, '#,##0;[RED]-#,##0' )
+
+def read_token_cache( ):
+	return get_string( config_apicache )
+
+def write_token_cache( s ):
+	set_string( config_apicache, s )
+
+def log_clear( ):
+	from datetime import datetime
+	today = datetime.today( )
+	set_string( config_log, today.strftime( '%Y.%m.%d-%H:%M:%S : Reconciling from Questrade started!' ) )
+
+def log_read( ):
+	return get_string( config_log )
+
+def log_write( message ):
+	from datetime import datetime
+	cell = cell_by_reference( config_log )
+	today = datetime.today( )
+	cell.setString( cell.getString( ) + '\n' + today.strftime( '%Y.%m.%d-%H:%M:%S : ' ) + message )
+
+def log_traceback( ):
+	from sys import exc_info
+	from traceback import format_exception
+	exc_type, exc_value, exc_traceback = exc_info( )
+	lines = format_exception( exc_type, exc_value, exc_traceback )
+	for line in lines:
+		log_write( line )
+
+def questrade_cache_connect( ):
+	from questrade_api import Questrade
+	if len( get_string( config_apicache ) ) == 0:
+		return None
+	try:
+		log_write( 'Authenticate with {} credentials.'.format( config_apicache ) )
+		q = Questrade( storage_adaptor = ( read_token_cache, write_token_cache ), logger = log_write )
+		set_string( config_timestamp, q.time['time'] )
+	except:
+		q = None
+		set_string( config_apicache, None )
+		log_write( 'Failed to authenticate. Contents of {} deleted.'.format( config_apicache ) )
+		log_traceback( )
+	return q
+
+def questrade_token_connect( ):
+	from questrade_api import Questrade
+	if len( get_string( config_token ) ) == 0:
+		return None
+	try:
+		log_write( 'Authenticate with {} credentials.'.format( config_token ) )
+		q = Questrade( refresh_token = get_string( config_token ), storage_adaptor = ( read_token_cache, write_token_cache ), logger = log_write )
+		set_string( config_timestamp, q.time['time'] )
+	except:
+		q = None
+		log_write( 'Failed to authenticate using Questrade token {}'.format( get_string( config_token ) ) )
+		log_traceback( )
+	return q
+
+def questrade_connect( ):
+	q = questrade_cache_connect( )
+	if q is None:
+		q = questrade_token_connect( )
+	if q is None:
+		raise RuntimeError( 'Failed to authenticate. Generate new Questrade token for {}'.format( config_token ) )
+	return q
+
 def finalize_ratelimits( questrade ):
 	remaining, reset = questrade.ratelimit
-	if remaining:
-		cell_remaining = cell_by_reference( config_remaining )
-		cell_remaining.setValue( float( remaining ) )
-	if reset:
-		cell_reset = cell_by_reference( config_reset )
-		cell_reset.setValue( float( reset ) )
+	set_number( config_remaining, float( remaining ) )
+	set_number( config_reset, reset )
 
 def message_box( message ):
 	from com.sun.star.awt.MessageBoxType import MESSAGEBOX, INFOBOX, WARNINGBOX, ERRORBOX, QUERYBOX
 	from com.sun.star.awt.MessageBoxButtons import BUTTONS_OK
 	from com.sun.star.awt.MessageBoxResults import OK, YES, NO, CANCEL
-
 	log_write( message )
 	model = desktop_model( )
 	parentwin = model.CurrentController.Frame.ContainerWindow
@@ -668,7 +647,7 @@ def QuestradeReconcile( *args ):
 						dividends.add_row( dividend )
 				positions.add_row( position )
 
-		for equity in equities.fetch( questrade, additional_equities( ) ):
+		for equity in equities.fetch( questrade, get_string( config_equities ) ):
 			equities.add_row( equity )
 			for dividend in dividends.fetch( equity ):
 				dividends.add_row( dividend )
