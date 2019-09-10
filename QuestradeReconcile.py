@@ -27,13 +27,6 @@
 		Interface-oriented programming in OpenOffice / LibreOffice : automate your office tasks with Python Macros.
 		http://christopher5106.github.io/office/2015/12/06/openoffice-libreoffice-automate-your-office-tasks-with-python-macros.html
 	
-	  
-
-		
-																								  
-																	
-																							   
-
 	QuestradeReconcile is free software: you can redistribute and/or modify it under the terms of the GNU General Public
 	License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
 	version.
@@ -105,34 +98,31 @@ def log_traceback( ):
 	for line in lines:
 		log_write( line )
 
-def api_read_cache( ):
-	from json import loads
+def read_token_cache( ):
 	cell = cell_by_reference( config_apicache )
-	try:
-		str = cell.getString( )
-		return loads( str )
-	except:
-		raise RuntimeError( 'No valid token provided and none found at {}'.format( config_apicache ) )
+	s = cell.getString( )
+	log_write( 'api_read_cache( ) = {}'.format( s ) )
+	return s
 
-def api_write_cache( token ):
-	from json import dumps
+def write_token_cache( s ):
 	cell = cell_by_reference( config_apicache )
-	json = dumps( token, indent = 4, sort_keys = True )
-	cell.setString( json )
+	cell.setString( s )
+	log_write( 'api_write_cache( s ) = {}'.format( s ) )
 
-def api_cache_connect( ):
+def questrade_cache_connect( ):
 	from questrade_api import Questrade
 
 	try:
-		q = Questrade( )
-		timevalue = q.time
+		q = Questrade( storage_adaptor = ( read_token_cache, write_token_cache ), logger = log_write )
+		cell = cell_by_reference( config_timestamp )
+		set_and_format_string( cell, q.time['time'], 'General' )
 	except:
 		q = None
 		log_write( 'Failed to authenticate using cached token file.' )
 		log_traceback( )
 	return q
 
-def api_token_connect( ):
+def questrade_token_connect( ):
 	from questrade_api import Questrade
 	from os.path import expanduser, isfile
 	from os import remove
@@ -141,18 +131,18 @@ def api_token_connect( ):
 	try:
 		if isfile( TOKEN_PATH ):
 			remove( TOKEN_PATH )
-		q = Questrade( refresh_token = token_value( ) )
-		timevalue = q.time
+		q = Questrade( refresh_token = token_value( ), storage_adaptor = ( read_token_cache, write_token_cache ), logger = log_write )
+		log_write( 'api_cache_connect::time() = {}'.format(  q.time ) )
 	except:
 		q = None
 		log_write( 'Failed to authenticate using refresh_token in cell {}'.format( config_token ) )
 		log_traceback( )
 	return q
 
-def api_connect( ):
-	q = api_cache_connect( )
-	if q is None:
-		q = api_token_connect( )
+def questrade_connect( ):
+	q = questrade_cache_connect( )
+#	if q is None:
+#		q = questrade_token_connect( )
 	if q is None:
 		raise RuntimeError( 'Failed to authenticate Questrade API.' )
 	return q
@@ -239,19 +229,21 @@ def set_and_format_float( cell, value, format ):
 		cell.setValue( float( value ) )
 		format_cell( cell, format )
 
-def timestamp( ):
-	from datetime import datetime
-
-	now = datetime.now( )
-	cell = cell_by_reference( config_timestamp )
-	value = now.strftime( '%A, %d %b %Y %I:%M:%S %p' )
-	set_and_format_string( cell, value, 'General' )
+def finalize_ratelimits( questrade ):
+	remaining, reset = questrade.ratelimit
+	if remaining:
+		cell_remaining = cell_by_reference( config_remaining )
+		cell_remaining.setValue( float( remaining ) )
+	if reset:
+		cell_reset = cell_by_reference( config_reset )
+		cell_reset.setValue( float( reset ) )
 
 def message_box( message ):
 	from com.sun.star.awt.MessageBoxType import MESSAGEBOX, INFOBOX, WARNINGBOX, ERRORBOX, QUERYBOX
 	from com.sun.star.awt.MessageBoxButtons import BUTTONS_OK
 	from com.sun.star.awt.MessageBoxResults import OK, YES, NO, CANCEL
 
+	log_write( message )
 	model = desktop_model( )
 	parentwin = model.CurrentController.Frame.ContainerWindow
 	box = parentwin.getToolkit( ).createMessageBox( parentwin, MESSAGEBOX, BUTTONS_OK, 'QuestradeReconcile', message )
@@ -271,8 +263,6 @@ class Spreadsheet( ):
 		'n5': lambda c, v: set_and_format_float( c, v, '#,##0.00000;[RED]-#,##0.00000' ),
 		'n6': lambda c, v: set_and_format_float( c, v, '#,##0.000000;[RED]-#,##0.000000' )
 	}
-
-	q = api_connect( )
 
 	def __init__( self, name, fields ):
 		self.name = name
@@ -312,16 +302,6 @@ class Spreadsheet( ):
 		property_header = property_value( 'HasHeader', True )
 		self.range.sort( [ property_fields, property_header ] )
 
-	@classmethod
-	def finalize_ratelimits( cls ):
-		remaining, reset = cls.q.ratelimit
-		if remaining:
-			cell_remaining = cell_by_reference( config_remaining )
-			cell_remaining.setValue( float( remaining ) )
-		if reset:
-			cell_reset = cell_by_reference( config_reset )
-			cell_reset.setValue( float( reset ) )
-
 class Accounts( Spreadsheet ):
 	def __init__( self ):
 		accounts_name = 'Accounts'
@@ -335,15 +315,15 @@ class Accounts( Spreadsheet ):
 		]
 		super( ).__init__( accounts_name, accounts_fields )
 
-	def fetch( self ):
+	def fetch( self, questrade ):
 		try:
-			quest_accounts = self.q.accounts
+			quest_accounts = questrade.accounts
 		except:
 			log_write( 'Accounts::fetch( ) failed' )
 			log_traceback( )
 			return
-		for quest_account in quest_accounts['accounts']:
-			yield quest_account
+		for account in quest_accounts['accounts']:
+			yield account
 
 class Balances( Spreadsheet ):
 	CAD = 0
@@ -365,18 +345,18 @@ class Balances( Spreadsheet ):
 		]
 		super( ).__init__( balances_name, balances_fields )
 
-	def fetch( self, account_number, account_type ):
+	def fetch( self, questrade, account ):
 		try:
-			quest_balances = self.q.account_balances( account_number )
+			quest_balances = questrade.account_balances( account['number'] )
 		except:
-			log_write( 'Balances::fetch( {}, {} ) failed'.format( account_number, account_type ) )
+			log_write( 'Balances::fetch( {}, {} ) failed'.format( account['number'], account['type'] ) )
 			log_traceback( )
 			return
 		for balanceType in [ 'combinedBalances', 'perCurrencyBalances' ]:
 			for currency in [ Balances.CAD, Balances.USD ]:
 				quest_balances[balanceType][currency]['balanceType'] = balanceType
-				quest_balances[balanceType][currency]['account'] = account_number
-				quest_balances[balanceType][currency]['accountType'] = account_type
+				quest_balances[balanceType][currency]['account'] = account['number']
+				quest_balances[balanceType][currency]['accountType'] = account['type']
 				yield quest_balances[balanceType][currency]
 
 	def default_sort( self ):
@@ -406,17 +386,17 @@ class Positions( Spreadsheet ):
 		]
 		super( ).__init__( positions_name, positions_fields )
 
-	def fetch( self, account_number, account_type ):
+	def fetch( self, questrade, account ):
 		try:
-			quest_positions = self.q.account_positions( account_number )
+			quest_positions = questrade.account_positions( account['number'] )
 		except:
-			log_write( 'Positions::fetch( {}, {} ) failed'.format( account_number, account_type ) )
+			log_write( 'Positions::fetch( {} ) failed'.format( account ) )
 			log_traceback( )
 			return
-		for quest_position in quest_positions['positions']:
-			quest_position['account'] = account_number
-			quest_position['accountType'] = account_type
-			yield quest_position
+		for position in quest_positions['positions']:
+			position['account'] = account['number']
+			position['accountType'] = account['type']
+			yield position
 
 	def default_sort( self ):
 		# account (column A = 0), currency (column C = 2), symbol (column D = 3)
@@ -451,32 +431,32 @@ class Equities( Spreadsheet ):
 		]
 		super( ).__init__( equities_name, equities_fields )
 
-	def fetch( self, symbol_names ):
+	def fetch( self, questrade, symbol_names ):
 		try:
 			if len( symbol_names ) == 0:
 				log_write( 'Equities::fetch( len( symbol_names ) is 0 )' )
 				return
-			quest_equities = self.q.symbols( names = symbol_names )
+			quest_equities = questrade.symbols( names = symbol_names )
 		except:
 			log_write( 'Equities::fetch( {} ) failed'.format( symbol_names ) )
 			log_traceback( )
 			return
-		for quest_equity in quest_equities['symbols']:
-			quest_equity['account'] = None
-			quest_equity['accountType'] = None
-			yield quest_equity
+		for equity in quest_equities['symbols']:
+			equity['account'] = None
+			equity['accountType'] = None
+			yield equity
 
-	def fetch_unique( self, account_number, account_type, symbol_id ):
+	def fetch_unique( self, questrade, account, position ):
 		try:
-			quest_equities = self.q.symbol( symbol_id )
+			quest_equities = questrade.symbol( position['symbolId'] )
 		except:
-			log_write( 'Equities::fetch_unique( {}, {}, {} ) failed'.format( account_number, account_type, symbol_id ) )
+			log_write( 'Equities::fetch_unique( {}, {} failed'.format( account, position['symbolId'] ) )
 			log_traceback( )
 			return None
-		quest_equity = quest_equities['symbols'][0]
-		quest_equity['account'] = account_number
-		quest_equity['accountType'] = account_type
-		return quest_equity
+		equity = quest_equities['symbols'][0]
+		equity['account'] = account['number']
+		equity['accountType'] = account['type']
+		return equity
 
 	def default_sort( self ):
 		# account (Column A = 0), currency (Column C = 2), symbol (Column C = 3)
@@ -510,17 +490,17 @@ class Activities( Spreadsheet ):
 		]
 		super( ).__init__( activities_name, activities_fields )
 
-	def fetch( self, account_number, account_type ):
+	def fetch( self, questrade, account ):
 		try:
-			quest_activities = self.q.account_activities( account_number, startTime = Activities.startDate, endTime = Activities.endDate )
+			quest_activities = questrade.account_activities( account['number'], startTime = Activities.startDate, endTime = Activities.endDate )
 		except:
-			log_write( 'Activities::fetch( {}, {} ) failed'.format( account_number, account_type ) )
+			log_write( 'Activities::fetch( {} ) failed'.format( account ) )
 			log_traceback( )
 			return
-		for quest_activity in quest_activities['activities']:
-			quest_activity['account'] = account_number
-			quest_activity['accountType'] = account_type
-			yield quest_activity
+		for activity in quest_activities['activities']:
+			activity['account'] = account['number']
+			activity['accountType'] = account['type']
+			yield activity
 
 	def default_sort( self ):
 		# account (Column A = 0), currency (Column C = 2), transactionDate (Column D = 3), Symbol (Column E = 4)
@@ -576,12 +556,12 @@ class Dividends( Spreadsheet ):
 		]
 		super( ).__init__( dividends_name, dividends_fields )
 
-	def cartesian_product( self, dividend, quest_equity ):
-		dividend['account'] = quest_equity['account']
-		dividend['accountType'] = quest_equity['accountType']
-		dividend['symbol'] = quest_equity['symbol']
-		dividend['symbolId'] = quest_equity['symbolId']
-		dividend['currency'] = quest_equity['currency']
+	def cartesian_product( self, dividend, equity ):
+		dividend['account'] = equity['account']
+		dividend['accountType'] = equity['accountType']
+		dividend['symbol'] = equity['symbol']
+		dividend['symbolId'] = equity['symbolId']
+		dividend['currency'] = equity['currency']
 		dividend['quantity'] = None
 		dividend['income'] = None
 		return dividend
@@ -612,18 +592,18 @@ class Dividends( Spreadsheet ):
 			log_traceback( )
 			return
 
-	def fetch( self, quest_equity ):
+	def fetch( self, equity ):
 		try:
-			listing_exchange = quest_equity['listingExchange']
-			generator = Dividends.handler[listing_exchange]( self, quest_equity )
+			listing_exchange = equity['listingExchange']
+			generator = Dividends.handler[listing_exchange]( self, equity )
 		except:
-			log_write( 'Dividends::fetch( {} ) failed'.format( quest_equity ) )
+			log_write( 'Dividends::fetch( {} ) failed'.format( equity ) )
 			log_traceback( )
 			return
 		return generator
 
-	def fetch_tsx( self, quest_equity ):
-		symbol = quest_equity['symbol'].replace( '.TO', '' )
+	def fetch_tsx( self, equity ):
+		symbol = equity['symbol'].replace( '.TO', '' )
 		url = 'https://dividendhistory.org/payout/tsx/{}/'.format( symbol )
 		data = self.url_open( url )
 
@@ -632,23 +612,23 @@ class Dividends( Spreadsheet ):
 
 		for match in Dividends.tsx_dividend_patttern.finditer( data ):
 			dividend = match.groupdict( )
-			self.cartesian_product( dividend, quest_equity )
+			self.cartesian_product( dividend, equity )
 			dividend['frequency'] = frequency
 			yield dividend
 
-	def fetch_nasdaq( self, quest_equity ):
-		symbol = quest_equity['symbol']
+	def fetch_nasdaq( self, equity ):
+		symbol = equity['symbol']
 		url = 'https://www.nasdaq.com/symbol/{}/dividend-history'.format( symbol )
 		data = self.url_open( url )
 
 		for match in Dividends.nasdaq_dividend_pattern.finditer( data ):
 			dividend = match.groupdict( )
-			self.cartesian_product( dividend, quest_equity )
+			self.cartesian_product( dividend, equity )
 			self.reformat_dates( dividend )
 			dividend['frequency'] = None
 			yield dividend
 
-	def fetch_null( self, quest_equity ):
+	def fetch_null( self, equity ):
 		return { }
 
 	def default_sort( self ):
@@ -656,8 +636,8 @@ class Dividends( Spreadsheet ):
 		self.sort_by_indicies( ( 6, 7, ), ascending = False )
 
 def QuestradeReconcile( *args ):
-	timestamp( )
 	log_clear( )
+	questrade = questrade_connect( )
 
 	try:
 		desktop_model( ).lockControllers( )
@@ -666,31 +646,31 @@ def QuestradeReconcile( *args ):
 		accounts = Accounts( )
 		balances = Balances( )
 		activities = Activities( )
-		positions = Positions( )
+		positions = Positions(  )
 		equities = Equities( )
 		dividends = Dividends( )
 
-		for quest_account in accounts.fetch( ):
-			accounts.add_row( quest_account )
-			for quest_balance in balances.fetch( quest_account['number'], quest_account['type'] ):
-				balances.add_row( quest_balance )
-			for quest_activity in activities.fetch( quest_account['number'], quest_account['type'] ):
-				activities.add_row( quest_activity )
-			for quest_position in positions.fetch( quest_account['number'], quest_account['type'] ):
-				quest_equity = equities.fetch_unique( quest_account['number'], quest_account['type'], quest_position['symbolId'] )
-				if quest_equity is not None:
-					quest_position['currency'] = quest_equity['currency']
-					equities.add_row( quest_equity )
-					for dividend in dividends.fetch( quest_equity ):
+		for account in accounts.fetch( questrade ):
+			accounts.add_row( account )
+			for balance in balances.fetch( questrade, account ):
+				balances.add_row( balance )
+			for activity in activities.fetch( questrade, account ):
+				activities.add_row( activity )
+			for position in positions.fetch( questrade, account ):
+				equity = equities.fetch_unique( questrade, account, position )
+				if equity is not None:
+					position['currency'] = equity['currency']
+					equities.add_row( equity )
+					for dividend in dividends.fetch( equity ):
 						if within_monthly_span( dividend['payout'], 3 ):
-							dividend['quantity'] = quest_position['openQuantity']
-							dividend['income'] = float( dividend['amount'] ) * float( quest_position['openQuantity'] )
+							dividend['quantity'] = position['openQuantity']
+							dividend['income'] = float( dividend['amount'] ) * float( position['openQuantity'] )
 						dividends.add_row( dividend )
-				positions.add_row( quest_position )
+				positions.add_row( position )
 
-		for quest_equity in equities.fetch( additional_equities( ) ):
-			equities.add_row( quest_equity )
-			for dividend in dividends.fetch( quest_equity ):
+		for equity in equities.fetch( questrade, additional_equities( ) ):
+			equities.add_row( equity )
+			for dividend in dividends.fetch( equity ):
 				dividends.add_row( dividend )
 
 		activities.default_sort( )
@@ -699,7 +679,7 @@ def QuestradeReconcile( *args ):
 		equities.default_sort( )
 		dividends.default_sort( )
 
-		Spreadsheet.finalize_ratelimits( )
+		finalize_ratelimits( questrade )
 
 	except:
 		log_traceback( )
@@ -708,8 +688,7 @@ def QuestradeReconcile( *args ):
 		desktop_model( ).removeActionLock( )
 		desktop_model( ).unlockControllers( )
 
-	log_write( 'Reconciling from Questrade completed!' )
-	message_box( log_read( ) )
+	message_box( 'Reconciling from Questrade completed!' )
 
 	return None
 
