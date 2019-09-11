@@ -216,7 +216,7 @@ def questrade_connect( ):
 def finalize_ratelimits( questrade ):
 	remaining, reset = questrade.ratelimit
 	set_number( config_remaining, float( remaining ) )
-	set_number( config_reset, reset )
+	set_number( config_reset, float( reset ) )
 
 def message_box( message ):
 	from com.sun.star.awt.MessageBoxType import MESSAGEBOX, INFOBOX, WARNINGBOX, ERRORBOX, QUERYBOX
@@ -507,14 +507,12 @@ class Dividends( Spreadsheet ):
 			<td>\s*<span[^>]*>(?P<payout>\d+/\d+/\d+)\s*</span>\s*</td>\s*
 		</tr>''',
 		VERBOSE | MULTILINE )
-	handler = {
+	handlers = {
 		'TSX':    lambda o, e: o.fetch_tsx( e ),
 		'NASDAQ': lambda o, e: o.fetch_nasdaq( e ),
 		'BATS':   lambda o, e: o.fetch_nasdaq( e ),
 		'ARCA':   lambda o, e: o.fetch_nasdaq( e ),
 		'NYSE':   lambda o, e: o.fetch_nasdaq( e ),
-		'':       lambda o, e: o.fetch_null( e ),
-		None:     lambda o, e: o.fetch_null( e )
 	}
 
 	def __init__( self ):
@@ -574,7 +572,8 @@ class Dividends( Spreadsheet ):
 	def fetch( self, equity ):
 		try:
 			listing_exchange = equity['listingExchange']
-			generator = Dividends.handler[listing_exchange]( self, equity )
+			handler = Dividends.handlers.get( listing_exchange, lambda o, e: o.fetch_null( e ) )
+			generator = handler( self, equity )
 		except:
 			log_write( 'Dividends::fetch( {} ) failed'.format( equity ) )
 			log_traceback( )
