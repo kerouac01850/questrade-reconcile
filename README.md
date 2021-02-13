@@ -8,6 +8,8 @@ This project was last tested on February 12th, 2021 and continues  to be fully f
 
 [PDF Documentation](Documentation/QuestradeMacroDocumentation.pdf?raw=True)
 
+This repository is not meant to offer a turnkey application but instead is a useful reference. Nobody ought to allow any application, including this one, access to the Questrade API without first being able to completely understand and audit the code.
+
 [Wiki Roadmap](https://github.com/kerouac01850/questrade-reconcile/wiki)
 
 QuestradeReconcile is free software: you can redistribute and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
