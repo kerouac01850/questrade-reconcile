@@ -1,6 +1,8 @@
 @echo off
 REM https://git-scm.com/book/en/v2/Git-Tools-Submodules
 
+cd /D "%~dp0"
+
 if exist "..\questrade-api-master.zip" (
 	if exist "questrade-api" (
 		del /Q "questrade-api"
@@ -26,33 +28,33 @@ if not exist "questrade-api\questrade_api" (
 	exit /B
 )
 
-if not exist "C:\Program Files\LibreOffice\share\Scripts\python" (
-	echo FAILED: Missing "C:\Program Files\LibreOffice\share\Scripts\python". Is LibreOffice installed? Quitting!
-	exit /B
-)
-
 if not exist "QuestradeReconcile.py" (
 	echo FAILED: Missing "QuestradeReconcile.py" from current directory! Quitting!
 	exit /B
 )
 
-if exist "C:\Program Files\LibreOffice\share\Scripts\python\QuestradeReconcile.py" (
-	del /Q "C:\Program Files\LibreOffice\share\Scripts\python\QuestradeReconcile.py"
-)
-
-if exist "C:\Program Files\LibreOffice\share\Scripts\python\QuestradeReconcile.py" (
-	echo FAILED: Could not remove old "C:\Program Files\LibreOffice\share\Scripts\python\QuestradeReconcile.py"! Not running as Administrator? Quitting!
+if not exist "%APPDATA%\LibreOffice\4\user\Scripts\python" (
+	echo FAILED: Missing "%APPDATA%\LibreOffice\4\user\Scripts\python". Is LibreOffice installed? Quitting!
 	exit /B
 )
 
-copy "QuestradeReconcile.py" "C:\Program Files\LibreOffice\share\Scripts\python\QuestradeReconcile.py" /Y > NUL:
+if exist "%APPDATA%\LibreOffice\4\user\Scripts\python\QuestradeReconcile.py" (
+	del /Q "%APPDATA%\LibreOffice\4\user\Scripts\python\QuestradeReconcile.py"
+)
 
-if not exist "C:\Program Files\LibreOffice\share\Scripts\python\QuestradeReconcile.py" (
-	echo FAILED: Missing "C:\Program Files\LibreOffice\share\Scripts\python\QuestradeReconcile.py"! Copy didn't work! Quitting!
+if exist "%APPDATA%\LibreOffice\4\user\Scripts\python\QuestradeReconcile.py" (
+	echo FAILED: Could not remove old "%APPDATA%\LibreOffice\4\user\Scripts\python\QuestradeReconcile.py"! Not running as Administrator? Quitting!
 	exit /B
 )
 
-echo INFO: QuestradeReconcile.py copied to LibreOffice Scripts.
+copy "QuestradeReconcile.py" "%APPDATA%\LibreOffice\4\user\Scripts\python\QuestradeReconcile.py" /Y > NUL:
+
+if not exist "%APPDATA%\LibreOffice\4\user\Scripts\python\QuestradeReconcile.py" (
+	echo FAILED: Missing "%APPDATA%\LibreOffice\4\user\Scripts\python\QuestradeReconcile.py"! Copy didn't work! Quitting!
+	exit /B
+)
+
+echo INFO: QuestradeReconcile.py copied to %APPDATA% LibreOffice Scripts.
 
 if not exist "C:\Program Files\LibreOffice\program\python-core-3.5.7\lib\site-packages" (
 	echo FAILED: Missing "C:\Program Files\LibreOffice\program\python-core-3.5.7\lib\site-packages"! LibreOffice install not as expected! Quitting!
@@ -72,11 +74,36 @@ if exist "C:\Program Files\LibreOffice\program\python-core-3.5.7\lib\site-packag
 
 xcopy "questrade-api\questrade_api" "C:\Program Files\LibreOffice\program\python-core-3.5.7\lib\site-packages\questrade_api" /S /Y /I > NUL:
 
-if not exist "C:\Program Files\LibreOffice\program\python-core-3.5.7\lib\site-packages\questrade_api" (
+if not exist "C:\Program Files\LibreOffice\program\python-core-3.7.7\lib\site-packages\questrade_api" (
 	echo FAILED: Couldn't copy "questrade-api\questrade_api" "C:\Program Files\LibreOffice\program\python-core-3.5.7\lib\site-packages\questrade_api" Quitting!
 	exit /B
 )
 
-echo INFO: questrade_api copied to Python site-packages.
+echo INFO: questrade_api copied to Python 3.5.7 site-packages.
+
+if not exist "C:\Program Files\LibreOffice\program\python-core-3.7.7\lib\site-packages" (
+	echo FAILED: Missing "C:\Program Files\LibreOffice\program\python-core-3.7.7\lib\site-packages"! LibreOffice install not as expected! Quitting!
+	exit /B
+)
+
+if exist "C:\Program Files\LibreOffice\program\python-core-3.7.7\lib\site-packages\questrade_api" (
+	del /Q "C:\Program Files\LibreOffice\program\python-core-3.7.7\lib\site-packages\questrade_api"
+	for /D %%p in ( "C:\Program Files\LibreOffice\program\python-core-3.7.7\lib\site-packages\questrade_api\*.*" ) do rmdir "%%p" /s /q
+	rmdir "C:\Program Files\LibreOffice\program\python-core-3.7.7\lib\site-packages\questrade_api"
+)
+
+if exist "C:\Program Files\LibreOffice\program\python-core-3.7.7\lib\site-packages\questrade_api" (
+	echo FAILED: Couldn't delete existing "C:\Program Files\LibreOffice\program\python-core-3.7.7\lib\site-packages\questrade_api" Quitting!
+	exit /B
+)
+
+xcopy "questrade-api\questrade_api" "C:\Program Files\LibreOffice\program\python-core-3.7.7\lib\site-packages\questrade_api" /S /Y /I > NUL:
+
+if not exist "C:\Program Files\LibreOffice\program\python-core-3.7.7\lib\site-packages\questrade_api" (
+	echo FAILED: Couldn't copy "questrade-api\questrade_api" "C:\Program Files\LibreOffice\program\python-core-3.7.7\lib\site-packages\questrade_api" Quitting!
+	exit /B
+)
+
+echo INFO: questrade_api copied to Python 3.7.7 site-packages.
 
 echo INFO: Success!!!
