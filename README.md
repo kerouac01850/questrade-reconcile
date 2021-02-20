@@ -14,8 +14,10 @@ This repository is not meant to offer a turnkey application but instead is a use
 
 **Prerequistes**
 
-[LibreOffice for spreadsheet functionality](https://www.libreoffice.org/download/download/)
-[7Zip for development](https://www.7-zip.org/download.html)
+<ul>
+   <li>[LibreOffice for spreadsheet functionality](https://www.libreoffice.org/download/download/)</li>
+   <li>[7Zip for development](https://www.7-zip.org/download.html)</li>
+</ul>
 
 **Notes**
 
@@ -33,7 +35,6 @@ Scanning the drive for archives:
 
 Listing archive: Sample.ods
 
---
 Path = Sample.ods
 Type = zip
 Physical Size = 24113
@@ -76,7 +77,7 @@ Scanning the drive for archives:
 1 file, 24113 bytes (24 KiB)
 
 Extracting archive: Sample.ods
---
+
 Path = Sample.ods
 Type = zip
 Physical Size = 24113
