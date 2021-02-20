@@ -1016,8 +1016,4 @@ def ReconcilePositions( *args ):
 	RunMacro( 'ReconcilePositions', lambda : Positions( ).reconcile( Connection( ) ) )
 	return None
 
-def TestCache( *args ):
-	RunMacro( 'TestCache', lambda: Configuration.CACHE( ) )
-	return None
-
-g_exportedScripts = QuestradeReconcile,ReconcileAccounts,ReconcileBalances,ReconcileActivities,ReconcileEquities,ReconcilePositions,TestCache
+g_exportedScripts = QuestradeReconcile,ReconcileAccounts,ReconcileBalances,ReconcileActivities,ReconcileEquities,ReconcilePositions
