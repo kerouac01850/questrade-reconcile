@@ -893,7 +893,6 @@ class Connection( ):
 			raise RuntimeError( 'Unable to authenticate connection with Questrade.' )
 
 	def __questrade_cache_connect( self ):
-		from questrade_api import Questrade
 		if len( Configuration.get_apicache( ) ) == 0:
 			return None
 		try:
@@ -908,7 +907,6 @@ class Connection( ):
 		return q
 
 	def __questrade_token_connect( self ):
-		from questrade_api import Questrade
 		if len( Configuration.get_token( ) ) == 0:
 			return None
 		try:
@@ -1018,4 +1016,8 @@ def ReconcilePositions( *args ):
 	RunMacro( 'ReconcilePositions', lambda : Positions( ).reconcile( Connection( ) ) )
 	return None
 
-g_exportedScripts = QuestradeReconcile,ReconcileAccounts,ReconcileBalances,ReconcileActivities,ReconcileEquities,ReconcilePositions
+def TestCache( *args ):
+	RunMacro( 'TestCache', lambda: Configuration.CACHE( ) )
+	return None
+
+g_exportedScripts = QuestradeReconcile,ReconcileAccounts,ReconcileBalances,ReconcileActivities,ReconcileEquities,ReconcilePositions,TestCache
