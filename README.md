@@ -90,7 +90,7 @@ Compressed: 24113
 To overwrite the existing Scripts\python\QuestradeReconcile.py file in the Sample.ods file with your changes using 7zip:
 
 <pre>
-W:\Questrade>"C:\Program Files\7-Zip\7z.exe" u Sample.ods Scripts\python\QuestradeReconcile.py
+W:\Questrade>"C:\Program Files\7-Zip\7z.exe" u -uy2 Sample.ods Scripts\python\QuestradeReconcile.py
 
 7-Zip 18.05 (x64) : Copyright (c) 1999-2018 Igor Pavlov : 2018-04-30
 

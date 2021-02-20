@@ -20,9 +20,6 @@
 
 	To change these locations the python code must be edited. See the Configuration class.
 	
-	This script must be copied into the following directory:
-		%APPDATA%\\LibreOffice\\4\\user\\Scripts\\python
-
 	QuestradeReconcile is free software: you can redistribute and/or modify it under the terms of the GNU General Public
 	License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
 	version.
