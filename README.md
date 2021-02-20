@@ -38,7 +38,7 @@ Listing archive: Sample.ods
 Path = Sample.ods
 Type = zip
 Physical Size = 24113
-
+<pre>
    Date      Time    Attr         Size   Compressed  Name
 ------------------- ----- ------------ ------------  ------------------------
 2021-02-20 17:05:18 .....           46           46  mimetype
@@ -63,6 +63,7 @@ Physical Size = 24113
 2021-02-20 17:05:18 .....         1577          362  META-INF\manifest.xml
 ------------------- ----- ------------ ------------  ------------------------
 2021-02-20 17:05:18             156876        21541  11 files, 9 folders
+</pre>
 </rawtext>
 
 To extract and make changes to the QuestradeReconcile.py file embedded within the Sample.ods file use 7zip or any other archive program:
