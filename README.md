@@ -25,7 +25,7 @@ Python and Basic macros are packed into the Sample spreadsheet file by default. 
 
 LibreOffice has a built-in editor for Basic but not for Python macros. The following is necessary when making Python changes to the spreadsheet file.
 
-'''
+<rawtext>
 W:\Questrade>"C:\Program Files\7-Zip\7z.exe" l Sample.ods
 
 7-Zip 18.05 (x64) : Copyright (c) 1999-2018 Igor Pavlov : 2018-04-30
@@ -63,12 +63,11 @@ Physical Size = 24113
 2021-02-20 17:05:18 .....         1577          362  META-INF\manifest.xml
 ------------------- ----- ------------ ------------  ------------------------
 2021-02-20 17:05:18             156876        21541  11 files, 9 folders
-
-'''
+</rawtext>
 
 To extract and make changes to the QuestradeReconcile.py file embedded within the Sample.ods file use 7zip or any other archive program:
 
-'''
+<rawtext>
 W:\Questrade>"C:\Program Files\7-Zip\7z.exe" x -aoa Sample.ods Scripts\python\QuestradeReconcile.py
 
 7-Zip 18.05 (x64) : Copyright (c) 1999-2018 Igor Pavlov : 2018-04-30
@@ -86,11 +85,11 @@ Everything is Ok
 
 Size:       36391
 Compressed: 24113
-'''
+</rawtext>
 
 To overwrite the existing Scripts\python\QuestradeReconcile.py file in the Sample.ods file with your changes using 7zip:
 
-'''
+<rawtext>
 W:\Questrade>"C:\Program Files\7-Zip\7z.exe" u Sample.ods Scripts\python\QuestradeReconcile.py
 
 7-Zip 18.05 (x64) : Copyright (c) 1999-2018 Igor Pavlov : 2018-04-30
@@ -113,7 +112,7 @@ Add new data to archive: 0 files, 0 bytes
 Files read from disk: 0
 Archive size: 24113 bytes (24 KiB)
 Everything is Ok
-'''
+</rawtext>
 
 QuestradeReconcile is free software: you can redistribute and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
