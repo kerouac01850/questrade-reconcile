@@ -1,3 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "module.dtd" PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN">
+<script:module script:language="StarBasic" script:moduleType="normal" script:name="QuestradeDashboard" xmlns:script="http://openoffice.org/2000/script">
+
 REM *****************************************************************************
 
 Function RATEFROM( sSheet As String, sCAD As String, sUSD As String ) As Double
@@ -183,3 +187,5 @@ Function TOTALGAIN( sSymbol As String ) As Double
 End Function
 
 REM *****************************************************************************
+
+</script:module>
