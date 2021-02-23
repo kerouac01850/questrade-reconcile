@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE module SYSTEM "module.dtd" PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN">
-<script:module script:language="StarBasic" script:moduleType="normal" script:name="QuestradeDashboard" xmlns:script="http://openoffice.org/2000/script">
-
-REM *****************************************************************************
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="QuestradeDashboard" script:language="StarBasic" script:moduleType="normal">REM *****************************************************************************
 
 Function RATEFROM( sSheet As String, sCAD As String, sUSD As String ) As Double
 	oSheet = ThisComponent.Sheets.getByName( sSheet )
@@ -14,7 +12,7 @@ End Function
 REM *****************************************************************************
 
 Function EXCHANGERATE( ) As Double
-	oNamedRange = ThisComponent.NamedRanges.getByName( "Exchange_Rate" )
+	oNamedRange = ThisComponent.NamedRanges.getByName( &quot;Exchange_Rate&quot; )
 	oCell = oNamedRange.getReferredCells( )
 	EXCHANGERATE = oCell.getValue( )
 End Function
@@ -74,9 +72,9 @@ Function MAPVALUE( sAccount As Variant, sSymbol As String, sSheet As String, sRa
 	On Local Error GoTo Finalize
 	oSheet = ThisComponent.Sheets.getByName( sSheet )
 	oRange = oSheet.getCellRangeByName( sRange )
-	lAccount = COLUMN( oSheet, "A1:AMJ1", "account" )
-	lColumn = COLUMN( oSheet, "A1:AMJ1", sColumn )
-	lCurrency = COLUMN( oSheet, "A1:AMJ1", "currency" )
+	lAccount = COLUMN( oSheet, &quot;A1:AMJ1&quot;, &quot;account&quot; )
+	lColumn = COLUMN( oSheet, &quot;A1:AMJ1&quot;, sColumn )
+	lCurrency = COLUMN( oSheet, &quot;A1:AMJ1&quot;, &quot;currency&quot; )
 	oDescriptor = SEARCHDESCRIPTOR( oRange, sSymbol )
 	oSymbol = oRange.findFirst( oDescriptor )
 	While IsNull( oSymbol ) = False
@@ -85,7 +83,7 @@ Function MAPVALUE( sAccount As Variant, sSymbol As String, sSheet As String, sRa
 		If IsNull( sAccount ) or oAccount.getString( ) = sAccount Then
 			oValue = oSheet.getCellByPosition( lColumn, lSymbol )
 			oCurrency = oSheet.getCellByPosition( lCurrency, ROWFROM( oValue ) )
-			dValue = IIF( bCurrency And oCurrency.getString( ) = "USD", oValue.getValue( ) * EXCHANGERATE( ), oValue.getValue( ) )
+			dValue = IIF( bCurrency And oCurrency.getString( ) = &quot;USD&quot;, oValue.getValue( ) * EXCHANGERATE( ), oValue.getValue( ) )
 			dTotal = dTotal + dValue
 		End If
 		oSymbol = oRange.findNext( oSymbol, oDescriptor )
@@ -104,20 +102,20 @@ Function DIVIDENDS( sSymbol As String ) As Double
 	dValue = 0.0
 	dTotal = 0.0
 	On Local Error GoTo Finalize
-	oSheet = ThisComponent.Sheets.getByName( "Activities" )
-	oRange = oSheet.getCellRangeByName( "E1:E1048576" )
-	lType = COLUMN( oSheet, "A1:AMJ1", "type" )
-	lAmount = COLUMN( oSheet, "A1:AMJ1", "netAmount" )
-	lCurrency = COLUMN( oSheet, "A1:AMJ1", "currency" )
+	oSheet = ThisComponent.Sheets.getByName( &quot;Activities&quot; )
+	oRange = oSheet.getCellRangeByName( &quot;E1:E1048576&quot; )
+	lType = COLUMN( oSheet, &quot;A1:AMJ1&quot;, &quot;type&quot; )
+	lAmount = COLUMN( oSheet, &quot;A1:AMJ1&quot;, &quot;netAmount&quot; )
+	lCurrency = COLUMN( oSheet, &quot;A1:AMJ1&quot;, &quot;currency&quot; )
 	oDescriptor = SEARCHDESCRIPTOR( oRange, sSymbol )
 	oSymbol = oRange.findFirst( oDescriptor )
 	While IsNull( oSymbol ) = False
 		lSymbol = ROWFROM( oSymbol )
 		oType = oSheet.getCellByPosition( lType, lSymbol )
-		If oType.getString( ) = "Dividends" Then
+		If oType.getString( ) = &quot;Dividends&quot; Then
 			oAmount = oSheet.getCellByPosition( lAmount, lSymbol )
 			oCurrency = oSheet.getCellByPosition( lCurrency, ROWFROM( oAmount ) )
-			dValue = IIF( oCurrency.getString( ) = "USD", oAmount.getValue( ) * EXCHANGERATE( ), oAmount.getValue( ) )
+			dValue = IIF( oCurrency.getString( ) = &quot;USD&quot;, oAmount.getValue( ) * EXCHANGERATE( ), oAmount.getValue( ) )
 			dTotal = dTotal + dValue
 		End If
 		oSymbol = oRange.findNext( oSymbol, oDescriptor )
@@ -133,9 +131,9 @@ Function ACCOUNT( sType As String ) As String
 	Dim oSheet, oCell As Object
 	lAccount = 0.0
 	On Local Error GoTo Finalize
-	oSheet = ThisComponent.Sheets.getByName( "Accounts" )
-	lColumn =  COLUMNFROM( FINDCELL( oSheet, "A1:AMJ1", "number" ) )
-	lRow = ROWFROM( FINDCELL( oSheet, "B1:B1048576", sType ) )
+	oSheet = ThisComponent.Sheets.getByName( &quot;Accounts&quot; )
+	lColumn =  COLUMNFROM( FINDCELL( oSheet, &quot;A1:AMJ1&quot;, &quot;number&quot; ) )
+	lRow = ROWFROM( FINDCELL( oSheet, &quot;B1:B1048576&quot;, sType ) )
 	oCell = oSheet.getCellByPosition( lColumn, lRow )
 	lAccount = oCell.getString( )
 Finalize: 
@@ -144,48 +142,62 @@ End Function
 
 REM *****************************************************************************
 
+Function CURRENCYOF( sSymbol As String ) As Variant
+	Dim sCurrency As Variant
+	sCurrency = Null
+	On Local Error GoTo Finalize
+	oSheet = ThisComponent.Sheets.getByName( &quot;Equities&quot; )
+	lColumn =  COLUMNFROM( FINDCELL( oSheet, &quot;A1:AMJ1&quot;, &quot;currency&quot; ) )
+	lRow = ROWFROM( FINDCELL( oSheet, &quot;D1:D1048576&quot;, sSymbol ) )
+	oCell = oSheet.getCellByPosition( lColumn, lRow )
+	sCurrency = oCell.getString( )
+Finalize:
+	CURRENCYOF = sCurrency
+End Function
+
+REM *****************************************************************************
+
 Function UNITVALUE( sSymbol As String ) As Double
 	Dim dValue As Double
-	dValue = MAPVALUE( Null, sSymbol, "Positions", "D1:D1048576", "currentPrice", true, false )
-	UNITVALUE = IIF( dValue = 0.0, MAPVALUE( Null, sSymbol, "Equities", "D1:D1048576", "prevDayClosePrice", true, false ), dValue )
+	dValue = MAPVALUE( Null, sSymbol, &quot;Positions&quot;, &quot;D1:D1048576&quot;, &quot;currentPrice&quot;, true, false )
+	UNITVALUE = IIF( dValue = 0.0, MAPVALUE( Null, sSymbol, &quot;Equities&quot;, &quot;D1:D1048576&quot;, &quot;prevDayClosePrice&quot;, true, false ), dValue )
 End Function
 
 REM *****************************************************************************
 
 Function UNITQTY( sAccount As String, sSymbol As String ) As Double
-	UNITQTY = MAPVALUE( sAccount, sSymbol, "Positions", "D1:D1048576", "openQuantity", false, false )
+	UNITQTY = MAPVALUE( sAccount, sSymbol, &quot;Positions&quot;, &quot;D1:D1048576&quot;, &quot;openQuantity&quot;, false, false )
 End Function
 
 REM *****************************************************************************
 
 Function UNITCOST( sAccount As String, sSymbol As String ) As Double
-	UNITCOST = MAPVALUE( sAccount, sSymbol, "Positions", "D1:D1048576", "averageEntryPrice", true, false )
+	UNITCOST = MAPVALUE( sAccount, sSymbol, &quot;Positions&quot;, &quot;D1:D1048576&quot;, &quot;averageEntryPrice&quot;, true, false )
 End Function
 
 REM *****************************************************************************
 
 Function TOTALCOST( sAccount As String, sSymbol As String ) As Double
-	TOTALCOST = MAPVALUE( sAccount, sSymbol, "Positions", "D1:D1048576", "totalCost", true, false )
+	TOTALCOST = MAPVALUE( sAccount, sSymbol, &quot;Positions&quot;, &quot;D1:D1048576&quot;, &quot;totalCost&quot;, true, false )
 End Function
 
 REM *****************************************************************************
 
 Function TOTALVALUE( sAccount As String, sSymbol As String ) As Double
-	TOTALVALUE = MAPVALUE( sAccount, sSymbol, "Positions", "D1:D1048576", "currentMarketValue", true, false )
+	TOTALVALUE = MAPVALUE( sAccount, sSymbol, &quot;Positions&quot;, &quot;D1:D1048576&quot;, &quot;currentMarketValue&quot;, true, false )
 End Function
 
 REM *****************************************************************************
 
 Function TOTALYIELD( sSymbol As String ) As Double
-	TOTALYIELD = MAPVALUE( Null, sSymbol, "Equities", "D1:D1048576", "yield", false, false ) / 100.0
+	TOTALYIELD = MAPVALUE( Null, sSymbol, &quot;Equities&quot;, &quot;D1:D1048576&quot;, &quot;yield&quot;, false, false ) / 100.0
 End Function
 
 REM *****************************************************************************
 
 Function TOTALGAIN( sSymbol As String ) As Double
-	TOTALGAIN = MAPVALUE( Null, sSymbol, "Positions", "D1:D1048576", "openPnl", true, true )
+	TOTALGAIN = MAPVALUE( Null, sSymbol, &quot;Positions&quot;, &quot;D1:D1048576&quot;, &quot;openPnl&quot;, true, true )
 End Function
 
 REM *****************************************************************************
-
 </script:module>
