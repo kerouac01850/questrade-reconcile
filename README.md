@@ -1,6 +1,6 @@
 The QuestradeReconcile macro is python code that uses the Questrade application programming interface (API) to fetch account, position, balance, equity, and 30 day activity into a LibreOffice spreadsheet file.
 
-This software is meant to be run infrequently to help provide base spreadsheet pages to build a customized dashboard view when, for example, re-balancing a portfolio. It is not meant to track real time market conditions.
+This software is meant to be run infrequently to provide core Questrade data than can be to build a customized dashboard view when, for example, re-balancing a portfolio. It is not meant to track real time market conditions.
 
 ![Figure 1: Run the QuestradeReconcile Python Macro](Documentation/RunQuestradeMacro.png?raw=True "Figure 1: Run the QuestradeReconcile Python Macro")
 
