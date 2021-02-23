@@ -8,7 +8,7 @@ This project was last tested on February 12th, 2021 and continues  to be fully f
 
 [PDF Documentation](Documentation/QuestradeMacroDocumentation.pdf?raw=True)
 
-This repository is not meant to offer a turnkey application but instead is a useful reference. Nobody ought to allow any application, including this one, access to the Questrade API without first being able to completely understand and audit the code.
+QuestradeReconcile delivers easily accessible base sheets that anyone who tinkers with spreadsheets can use to make a fully customized portfolio managment application. UNobody ought to allow any software, including code from this repository, access to the Questrade API without first being able to perform a security audit.
 
 [Wiki Roadmap](https://github.com/kerouac01850/questrade-reconcile/wiki)
 
