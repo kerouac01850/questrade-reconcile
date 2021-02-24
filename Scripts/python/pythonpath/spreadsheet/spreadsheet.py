@@ -8,18 +8,6 @@
 	Data from the Questrade on-line platform will be used to update these sheets. The sheets can be moved within the file:
 	sheet order does not affect anything. Any other sheets in the file are ignored.
 	
-	The Configuration sheet must have the following cells defined for the QuestradeReconcile macro to function correctly.
-		$Configuration.B1  : Questrade authentication token_value text string.
-		$Configuration.B3  : A date cell indicating the last time the macro was run.
-		$Configuration.B5  : RateLimit API remaining is number of API requests allowed against the current limit.
-		$Configuration.B7  : RateLimit API reset is time when the current limit will expire ( Unix timestamp ).
-		$Configuration.B10 : A text cell with a comma separated list of equity symbols.
-		$Configuration.B12 : A text cell with default logging level.
-		$Configuration.B15 : A text cell for logging macro status.
-		$Configuration.B17 : Questrade API token cache
-
-	To change these locations the python code must be edited. See the Configuration class.
-	
 	QuestradeReconcile is free software: you can redistribute and/or modify it under the terms of the GNU General Public
 	License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
 	version.
